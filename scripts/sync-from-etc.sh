@@ -4,7 +4,7 @@
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SRC=/etc/asterisk
-FILES="pjsip.conf extensions.conf queues.conf voicemail.conf cdr.conf modules.conf"
+FILES="pjsip.conf extensions.conf queues.conf voicemail.conf cdr.conf modules.conf http.conf"
 for f in $FILES; do
   sed -E \
     -e 's/^([[:space:]]*password[[:space:]]*=[[:space:]]*).*/\1<redacted>/' \

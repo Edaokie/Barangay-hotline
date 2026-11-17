@@ -5,3 +5,4 @@ secrets/
 *.gsm
 *.WAV
 Master.csv
+web/config.js

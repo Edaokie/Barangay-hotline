@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fil">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Call Barangay — Mahayahay Emergency Hotline</title>
+<style>
+  :root { --red:#c62828; --red-d:#8e0000; --ink:#1b1b1b; --muted:#5f6368; --bg:#fafafa; --card:#fff; --ok:#2e7d32; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--bg);
+         padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom)); }
+  main { max-width:420px; margin:0 auto; text-align:center; }
+  h1 { font-size:1.35rem; margin:.4em 0 .1em; }
+  .sub { color:var(--muted); margin:0 0 1.2em; font-size:.95rem; }
+  #call { width:min(72vw,260px); aspect-ratio:1; border-radius:50%; border:0; background:var(--red); color:#fff;
+          font-size:1.5rem; font-weight:700; box-shadow:0 6px 18px rgba(198,40,40,.35); cursor:pointer; }
+  #call:active { background:var(--red-d); }
+  #call.incall { background:#424242; box-shadow:none; }
+  #call small { display:block; font-weight:400; font-size:.85rem; margin-top:.3em; }
+  #status { margin:1em 0 .4em; font-weight:600; min-height:1.4em; }
+  #loc { color:var(--muted); font-size:.85rem; min-height:1.2em; }
+  .keys { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:1.2em 0; }
+  .keys button { padding:14px 4px; border-radius:12px; border:1px solid #ddd; background:var(--card); font-size:1rem; cursor:pointer; }
+  .keys button b { display:block; font-size:1.6rem; }
+  .keys button:disabled { opacity:.4; }
+  .note { font-size:.8rem; color:var(--muted); margin-top:1.5em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Barangay Mahayahay Emergency Hotline</h1>
+  <p class="sub">Libre nga tawag · Free call · Lab prototype</p>
+
+  <button id="call" type="button">TAWAG<small>Call Barangay</small></button>
+
+  <div id="status">Andam · Ready</div>
+  <div id="loc"></div>
+
+  <div class="keys" aria-label="Emergency type">
+    <button type="button" data-d="1" disabled><b>1</b>Sunog<br>Fire</button>
+    <button type="button" data-d="2" disabled><b>2</b>Medikal<br>Medical</button>
+    <button type="button" data-d="3" disabled><b>3</b>Kalinaw<br>Peace &amp; order</button>
+  </div>
+
+  <audio id="remote" autoplay playsinline></audio>
+  <p class="note">Ang tawag girekord ug ang imong lokasyon (GPS) ipadala sa barangay.<br>
+  Calls are recorded and your GPS location is sent to the barangay.</p>
+</main>
+<script src="config.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -29,8 +29,10 @@ Owner: Edrian (edoaki), MSU-IIT graduate student. This prototype supports a rese
 | 1001 | Resident (caller) | iPhone A, Linphone | `<redacted>` |
 | 1002 | Responder 1 | iPhone B, Linphone | `<redacted>` |
 | 1003 | Responder 2 | not registered yet (Mac "Telephone" app or 3rd phone) | `<redacted>` |
+| 1004 | Web resident (browser, WebRTC over WSS) | "Call Barangay" page; context `[web]` = 8000 only | `<redacted>` |
 
-Transports: `[transport-udp]` and `[transport-tcp]` as **separate** sections, both `0.0.0.0:5060`.
+Transports: `[transport-udp]` and `[transport-tcp]` as **separate** sections, both `0.0.0.0:5060`;
+`[transport-wss]` (port comes from http.conf: HTTPS `0.0.0.0:8089`, plain HTTP `127.0.0.1:8088` only).
 Templates: `[endpoint-tpl](!)` (context=lab, ulaw/alaw, direct_media=no, rtp_symmetric, force_rport,
 rewrite_contact, rfc4733), `[auth-tpl](!)`, `[aor-tpl](!)` (max_contacts=1, remove_existing, qualify 30 s).
 
@@ -41,6 +43,9 @@ Context `[lab]`:
 - `_7XXX` → prompt recorder: saves `/var/lib/asterisk/sounds/custom/prompt-XXX.wav`
 - `8000` → `Goto(hotline-ivr,s,1)` (old Day 3 lines are commented out with `;`, keep them)
 - `*97` → VoiceMailMain(${CALLERID(num)}@default)
+
+Context `[web]` (browser callers): `8000` → FILTER(X-Location) → append `time,UNIQUEID,callerid,lat/lon/acc`
+to `/var/log/asterisk/locations.csv` → `Goto(hotline-ivr,s,1)`. Anything else → pbx-invalid.
 
 Context `[hotline-ivr]`: consent prompt-101 → menu prompt-102 →
 `1`=fire, `2`=medical, `3`=peace, `i`=invalid (repeat), `t`=timeout (repeat once, then general).
@@ -62,10 +67,20 @@ Custom prompts: 101 consent, 102 menu, 103 connecting, 104 leave a message (reco
 - [x] Day 2 — 1001 ↔ 1002 calls over hotspot
 - [x] Day 3 — hotline queue, consent prompt, recording (MixMonitor), voicemail, *97, CDR
 - [ ] Day 4 — IVR with category queues: config loaded, **prompt-102 not recorded yet**, live test pending
-- [ ] Day 5 — HTTPS (mkcert) + WSS + SIP.js "Call Barangay" web page with GPS (X-Location header)
+- [~] Day 5 — HTTPS (mkcert) + WSS + SIP.js "Call Barangay" page with GPS: **server side done & verified**
+  (HTTPS 200s, WSS 101 upgrade, endpoint 1004 webrtc). Pending: browser/phone call test, trust CA on devices.
 - [ ] Day 6 — call-quality tests: `tc netem` profiles + tcpdump/Wireshark, QOS log via `${CHANNEL(rtcp,all)}`
 - [ ] Day 7 — evidence pack + 5-minute demo
 Later/simulated only: MySQL realtime, dispatcher dashboard, 911 escalation (fake extension), TLS for Linphone.
+
+## Day 5 web page
+- URL: `https://<VM-IP>:8089/static/barangay/index.html` (files in `/var/lib/asterisk/static-http/barangay/`)
+- SIP.js 0.21.2 ESM served locally (`sipjs/`, npm shasum verified) → works with no internet.
+- Install/update: `sudo SIPJS_DIR=<sip.js>/lib scripts/install-web.sh` (writes `config.js` from pjsip.conf; config.js is git-ignored).
+- TLS: mkcert CA + key in `/etc/asterisk/keys/` (git-ignored). Cert SANs: 172.20.10.14, 192.168.1.57, asterisklab(.local), localhost.
+  New network IP → re-run mkcert with that IP and restart. Devices must trust `keys/ca/rootCA.pem`
+  (iPhone: AirDrop → install profile → Settings › General › About › Certificate Trust Settings → enable).
+- Asterisk serves `.crt` as `text/crt`, so iOS won't install the CA from the page — use AirDrop/Files.
 
 ## Repos
 - `/etc/asterisk` — local git (live config, history of every change). Not pushed.

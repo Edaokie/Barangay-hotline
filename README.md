@@ -20,8 +20,15 @@ Lab-scale prototype of a free, always-answered emergency hotline for barangay re
 4. Category queue rings responders (round-robin, 60 s)
 5. Nobody answers → prompt-104 → voicemail, so no call is lost
 
+## Web caller (Day 5)
+Open `https://<VM-IP>:8089/static/barangay/index.html` on a device that trusts the lab CA → tap **TAWAG** →
+GPS is sent in an `X-Location` SIP header → hotline IVR. Location is logged to `/var/log/asterisk/locations.csv`
+(joins to the CDR via UNIQUEID). The browser account can only dial 8000.
+
 ## Repo layout
-- `asterisk/` — the 6 customised configs from `/etc/asterisk` (**passwords/PINs redacted**)
+- `asterisk/` — the 7 customised configs from `/etc/asterisk` (**passwords/PINs redacted**)
+- `web/` — "Call Barangay" page (index.html, app.js; `config.example.js` → `config.js` on server)
+- `scripts/install-web.sh` — install the page + SIP.js into Asterisk's static web root
 - `scripts/sync-from-etc.sh` — refresh `asterisk/` from the live server (redacts secrets, refuses to finish if any leak)
 - `docs/` — progress notes and evidence for the methods section
 - `CLAUDE.md` — project context and working rules
@@ -35,6 +42,6 @@ then `sudo systemctl restart asterisk`. Register Linphone clients as 1001–1003
 - [x] Day 2 — phone-to-phone calls
 - [x] Day 3 — queue, consent, recording, voicemail, CDR
 - [ ] Day 4 — IVR category queues (live test pending)
-- [ ] Day 5 — HTTPS/WSS + SIP.js web "Call Barangay" page with GPS
+- [~] Day 5 — HTTPS/WSS + SIP.js web "Call Barangay" page with GPS (server done; device test pending)
 - [ ] Day 6 — call-quality tests (netem, tcpdump, RTCP stats)
 - [ ] Day 7 — evidence pack + demo
