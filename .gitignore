@@ -6,3 +6,4 @@ secrets/
 *.WAV
 Master.csv
 web/config.js
+__pycache__/
