@@ -1,0 +1,7 @@
+# never commit real secrets or call data
+*.secret
+secrets/
+*.wav
+*.gsm
+*.WAV
+Master.csv
