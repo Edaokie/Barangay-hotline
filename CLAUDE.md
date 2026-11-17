@@ -55,7 +55,7 @@ Custom prompts: 101 consent, 102 menu, 103 connecting, 104 leave a message (reco
 ## Other config
 - `voicemail.conf` `[default]`: 1001/1002/1003 => PIN `<redacted>`
 - `cdr.conf`: `usegmtime=no` (CSV in PHT; older rows before 13 Nov 04:08 are UTC)
-- `modules.conf`: noload cdr_radius.so, cel_radius.so
+- `modules.conf`: noload radius, ldap, pgsql, tds, sqlite3_custom, custom CDR/CEL, chan_console, phoneprov (unused; clean startup log)
 
 ## Progress (1-week build plan)
 - [x] Day 1 — VM + Asterisk 24 built and running
@@ -80,7 +80,8 @@ Later/simulated only: MySQL realtime, dispatcher dashboard, 911 escalation (fake
 6. After edits, apply with the lightest reload and verify:
    - dialplan: `sudo asterisk -rx "dialplan reload"` then `dialplan show <ext>@<context>`
    - queues: `sudo asterisk -rx "queue reload all"` then `queue show`
-   - pjsip endpoints: `sudo asterisk -rx "pjsip reload"`; **new transports need** `sudo systemctl restart asterisk`
+   - pjsip endpoints: `sudo asterisk -rx "pjsip reload"`; **new transports / modules.conf need a full restart**
+   - full restart: `sudo systemctl stop asterisk && sudo systemctl start asterisk`, then `pgrep -a asterisk` (do NOT trust `systemctl restart` — see Known issues)
 7. Never print or commit passwords/PINs; use `<redacted>`. Run `scripts/sync-from-etc.sh` before every GitHub commit.
 8. The owner does the phone actions (dial, answer). Claude watches logs and diagnoses.
 
@@ -104,6 +105,9 @@ sudo ls -R /var/spool/asterisk/voicemail/default/
 - `No registered publish handler for event presence`: Linphone presence publishing; harmless.
 - Desktop install once caused two DHCP IPs; fixed by netplan renderer=NetworkManager + cloud-init network disabled.
 - Opus on ARM64: `codec_opus` availability unconfirmed — check `core show codecs` before relying on it.
+
+- `systemctl restart asterisk` race (17 Nov): the SysV stop returns before Asterisk exits, so start sees
+  "already running" and quits → **no Asterisk running** while systemd says `active (exited)`. Use stop, then start, then verify with `pgrep`.
 
 ## Deployment requirement (for the proposal)
 The barangay network must let devices reach the server: Wi-Fi client isolation off, or server on a wired port.
