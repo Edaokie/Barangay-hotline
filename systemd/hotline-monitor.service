@@ -1,0 +1,12 @@
+[Unit]
+Description=Barangay hotline live monitor collector (writes status.json for monitor.html)
+After=asterisk.service
+
+[Service]
+ExecStart=/usr/bin/python3 -I /usr/local/sbin/hotline-monitor.py
+Restart=always
+RestartSec=5
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

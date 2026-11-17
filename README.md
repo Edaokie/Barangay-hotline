@@ -25,6 +25,10 @@ Open `https://<VM-IP>:8089/static/barangay/index.html` on a device that trusts t
 GPS is sent in an `X-Location` SIP header → hotline IVR. Location is logged to `/var/log/asterisk/locations.csv`
 (joins to the CDR via UNIQUEID). The browser account can only dial 8000.
 
+## Live monitor
+`https://<VM-IP>:8089/static/barangay/monitor.html` — registrations, live calls (step, emergency type, GPS, audio quality),
+queues, recent calls and events, refreshed every 2 s. Collector: `scripts/hotline-monitor.py` as `hotline-monitor.service`.
+
 ## Repo layout
 - `asterisk/` — the 7 customised configs from `/etc/asterisk` (**passwords/PINs redacted**)
 - `web/` — "Call Barangay" page (index.html, app.js; `config.example.js` → `config.js` on server)
@@ -42,6 +46,6 @@ then `sudo systemctl restart asterisk`. Register Linphone clients as 1001–1003
 - [x] Day 2 — phone-to-phone calls
 - [x] Day 3 — queue, consent, recording, voicemail, CDR
 - [ ] Day 4 — IVR category queues (live test pending)
-- [~] Day 5 — HTTPS/WSS + SIP.js web "Call Barangay" page with GPS (server done; device test pending)
-- [ ] Day 6 — call-quality tests (netem, tcpdump, RTCP stats)
+- [~] Day 5 — HTTPS/WSS + SIP.js web "Call Barangay" page with GPS (verified with headless browser; iPhone test pending)
+- [~] Day 6 — call-quality tests: QOS log + 5 netem profiles done on loopback (see docs/test-log.md); phone run pending
 - [ ] Day 7 — evidence pack + demo

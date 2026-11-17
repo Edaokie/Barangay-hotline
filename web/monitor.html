@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hotline Monitor — Barangay Mahayahay (lab)</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1c1e21; --muted:#65676b; --line:#e4e6eb;
+          --ok:#1e8e3e; --okbg:#e6f4ea; --warn:#b06000; --warnbg:#fef7e0; --bad:#c5221f; --badbg:#fce8e6;
+          --info:#1967d2; --infobg:#e8f0fe; --fire:#d93025; --medical:#1967d2; --peace:#7b1fa2; --general:#5f6368; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141518; --card:#1f2125; --ink:#e8eaed; --muted:#9aa0a6; --line:#33363b;
+            --okbg:#16331f; --warnbg:#3a2f12; --badbg:#3b1715; --infobg:#172a46; --ok:#81c995; --warn:#fdd663; --bad:#f28b82; --info:#8ab4f8; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+         padding:max(12px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom)); }
+  header { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; margin-bottom:12px; }
+  header h1 { font-size:1.15rem; margin:0; flex:1 1 auto; }
+  .pill { display:inline-block; padding:2px 9px; border-radius:999px; font-size:.8rem; font-weight:600; white-space:nowrap; }
+  .ok { background:var(--okbg); color:var(--ok); } .warn { background:var(--warnbg); color:var(--warn); }
+  .bad { background:var(--badbg); color:var(--bad); } .info { background:var(--infobg); color:var(--info); }
+  .muted { color:var(--muted); }
+  .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr)); }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; min-width:0; }
+  section.wide { grid-column:1/-1; }
+  h2 { font-size:.95rem; margin:2px 0 8px; display:flex; align-items:center; gap:8px; }
+  h2 .count { font-weight:400; color:var(--muted); font-size:.85rem; }
+  .scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  th, td { text-align:left; padding:5px 8px; border-bottom:1px solid var(--line); vertical-align:top; white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; font-size:.75rem; text-transform:uppercase; letter-spacing:.03em; }
+  td.wrap { white-space:normal; }
+  tr.live td { background:var(--infobg); }
+  .cat { font-weight:700; text-transform:capitalize; }
+  .cat-fire { color:var(--fire); } .cat-medical { color:var(--medical); } .cat-peace { color:var(--peace); } .cat-general { color:var(--general); }
+  .num { font-variant-numeric:tabular-nums; }
+  .empty { color:var(--muted); padding:8px; font-style:italic; }
+  .q { border:1px solid var(--line); border-radius:8px; padding:6px 8px; margin-bottom:6px; }
+  .q b { margin-right:6px; }
+  .member { display:inline-block; margin:3px 6px 0 0; }
+  a { color:var(--info); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📞 Barangay Hotline — Live Monitor <span class="muted" style="font-weight:400">(lab test)</span></h1>
+  <span id="ast" class="pill">…</span>
+  <span id="fresh" class="pill">…</span>
+  <span class="muted" id="meta"></span>
+</header>
+
+<div class="grid">
+  <section class="wide">
+    <h2>🔴 Live calls <span class="count" id="calls-n"></span></h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Caller</th><th>Step</th><th>Emergency</th><th>Location (GPS)</th><th>Time</th><th>Audio rx / tx · loss · jitter</th><th>Channel</th></tr></thead>
+      <tbody id="calls"></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>📱 Phones / extensions</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Ext</th><th>Role</th><th>Status</th><th>IP</th><th>RTT</th></tr></thead>
+      <tbody id="eps"></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>👥 Queues (responders)</h2>
+    <div id="queues"></div>
+  </section>
+
+  <section class="wide">
+    <h2>🗂️ Recent calls <span class="count">(CDR + GPS, newest first)</span></h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Start</th><th>From</th><th>To</th><th>Emergency</th><th>Outcome</th><th>Dur</th><th>Location</th><th>Call ID</th></tr></thead>
+      <tbody id="cdr"></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>🧾 Queue event log</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Time</th><th>Queue</th><th>Event</th><th>Detail</th></tr></thead>
+      <tbody id="qev"></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>⚠️ Warnings / errors <span class="count">(messages.log)</span></h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Time</th><th>Level</th><th>Message</th></tr></thead>
+      <tbody id="warn"></tbody></table></div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+const cat = (c) => c ? `<span class="cat cat-${esc(c)}">${esc(c)}</span>` : `<span class="muted">—</span>`;
+function loc(l) {
+  if (!l || l === "none") return `<span class="muted">${l === "none" ? "not shared" : "—"}</span>`;
+  const [lat, lon, acc] = l.split("/");
+  return `<span class="num">${esc(lat)}, ${esc(lon)}</span> <span class="muted">±${esc(acc)} m</span>
+          <a href="https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lon)}#map=18/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}" target="_blank" rel="noopener" title="Map (needs internet)">map</a>`;
+}
+function statusPill(s) {
+  const cls = /Unavailable|Unreach|Not registered|Invalid/i.test(s) ? "bad" : /Not in use|^Avail/i.test(s) ? "ok" : /In use|Ringing|Busy|On Hold/i.test(s) ? "info" : "warn";
+  return `<span class="pill ${cls}">${esc(s)}</span>`;
+}
+const empty = (n, t) => `<tr><td colspan="${n}" class="empty">${t}</td></tr>`;
+
+function render(d) {
+  $("ast").className = "pill " + (d.asterisk_up ? "ok" : "bad");
+  $("ast").textContent = d.asterisk_up ? `Asterisk up ${mmss(Math.floor(d.uptime_s / 60))} h:m` : "Asterisk DOWN";
+  $("meta").textContent = `VM IP ${d.vm_ips.join(", ") || "?"} · updated ${d.generated}`;
+
+  // only caller-side legs (hide responder legs created by Queue/Dial)
+  const live = d.calls.filter((c) => c.app !== "AppDial");
+  $("calls-n").textContent = `(${live.length})`;
+  $("calls").innerHTML = live.length ? live.map((c) => {
+    const r = c.rtp;
+    const a = r ? `<span class="num">${r.rx} / ${r.tx} · ${r.rx_loss_pct}% · ${(r.rx_jitter * 1000).toFixed(0)} ms</span>` : `<span class="muted">—</span>`;
+    const step = c.app === "Queue" && c.bridged ? "Talking to responder" : c.step;
+    return `<tr class="live"><td><b>${esc(c.callerid)}</b></td><td>${esc(step)}${c.app === "Queue" ? ` <span class="muted">${esc(c.data.split(",")[0])}</span>` : ""}</td>
+      <td>${cat(c.category)}</td><td>${loc(c.location)}</td><td class="num">${mmss(c.duration)}</td><td>${a}</td><td class="muted">${esc(c.channel)}</td></tr>`;
+  }).join("") : empty(7, "No active calls");
+
+  $("eps").innerHTML = d.endpoints.map((e) => `<tr><td><b>${esc(e.ext)}</b></td><td>${esc(e.role)}</td>
+    <td>${e.ext === "1004" && e.reg === "Not registered" ? `<span class="pill info">Web (calls only)</span>` : statusPill(e.reg === "Not registered" ? e.reg : e.state)}</td>
+    <td class="num">${esc(e.ip) || "—"}</td><td class="num">${e.rtt_ms != null ? e.rtt_ms + " ms" : "—"}</td></tr>`).join("");
+
+  $("queues").innerHTML = d.queues.map((q) => `<div class="q"><b>${esc(q.name)}</b>
+    ${q.waiting ? `<span class="pill bad">${q.waiting} waiting</span>` : `<span class="pill ok">0 waiting</span>`}
+    <span class="muted"> answered ${q.completed} · abandoned ${q.abandoned}</span><br>
+    ${q.members.map((m) => `<span class="member">${esc(m.name.replace("PJSIP/", ""))} ${statusPill(m.status)}</span>`).join("")}
+    ${q.callers.map((c) => `<div class="muted">⏳ ${esc(c.channel)} waiting ${esc(c.wait)}</div>`).join("")}</div>`).join("") || `<div class="empty">No queues</div>`;
+
+  $("cdr").innerHTML = d.recent_calls.length ? d.recent_calls.map((c) => `<tr><td class="num">${esc(c.start)}</td><td><b>${esc(c.src)}</b></td>
+    <td>${esc(c.dst)}</td><td>${cat(c.category)}</td><td class="wrap">${esc(c.outcome)}</td><td class="num">${mmss(c.duration)}</td>
+    <td>${loc(c.location)}</td><td class="muted num">${esc(c.uniqueid)}</td></tr>`).join("") : empty(8, "No calls yet");
+
+  $("qev").innerHTML = d.queue_events.length ? d.queue_events.map((e) => `<tr><td class="num">${esc(e.time.slice(11))}</td><td>${esc(e.queue)}</td>
+    <td>${esc(e.event)}${e.agent ? ` <b>${esc(e.agent.replace("PJSIP/", ""))}</b>` : ""}</td><td class="muted">${esc(e.detail)}</td></tr>`).join("") : empty(4, "No queue events");
+
+  $("warn").innerHTML = d.warnings.length ? d.warnings.map((w) => `<tr><td class="num">${esc(w.time.slice(7))}</td>
+    <td><span class="pill ${w.level === "ERROR" ? "bad" : "warn"}">${esc(w.level)}</span></td><td class="wrap">${esc(w.text)}</td></tr>`).join("") : empty(3, "None");
+}
+
+let last = 0;
+async function poll() {
+  try {
+    const r = await fetch("status.json?t=" + Date.now(), { cache: "no-store" });
+    if (r.ok) { render(await r.json()); last = Date.now(); }
+  } catch (e) { /* show as stale below */ }
+  const age = (Date.now() - last) / 1000;
+  $("fresh").className = "pill " + (age < 6 ? "ok" : "bad");
+  $("fresh").textContent = age < 6 ? "● live" : `stale ${Math.round(age)} s — is hotline-monitor running?`;
+}
+poll(); setInterval(poll, 2000);
+</script>
+</body>
+</html>

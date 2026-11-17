@@ -33,7 +33,9 @@ async function ensureUA() {
   if (ua) return ua;
   ua = new UserAgent({
     uri: UserAgent.makeURI(`sip:${CFG.user}@${host}`),
-    transportOptions: { server: `wss://${location.host}/ws` },
+    // 15 s (SIP.js default is 5 s): Day 6 netem test showed the TLS/WSS handshake needs longer
+    // on a bad link (300 ms ± 60 ms, 10 % loss) — an emergency caller should not be cut off by that.
+    transportOptions: { server: `wss://${location.host}/ws`, connectionTimeout: 15 },
     authorizationUsername: CFG.user,
     authorizationPassword: CFG.password,
     displayName: "Web Resident",
@@ -83,10 +85,37 @@ function hangUp() {
   else if (session.state === SessionState.Establishing || session.state === SessionState.Initial) session.cancel();
 }
 
+function sendDigit(d) {
+  const sdh = session && session.sessionDescriptionHandler;
+  const ok = !!(sdh && sdh.sendDtmf(d));
+  if (ok) setStatus(`Gipili: ${d} · Selected`);
+  return ok;
+}
+
 callBtn.addEventListener("click", () => (session ? hangUp() : startCall()));
-keys.forEach((k) =>
-  k.addEventListener("click", () => {
-    const sdh = session && session.sessionDescriptionHandler;
-    if (sdh && sdh.sendDtmf(k.dataset.d)) setStatus(`Gipili: ${k.dataset.d} · Selected`);
-  })
-);
+keys.forEach((k) => k.addEventListener("click", () => sendDigit(k.dataset.d)));
+
+// Lab self-test (only when the URL has ?auto=1): call, press a digit, hang up, log each step.
+// e.g. index.html?auto=1&dtmf=2&dtmfAt=8&hangupAt=25   (seconds after the call connects)
+const q = new URLSearchParams(location.search);
+if (q.get("auto") === "1") {
+  const t0 = Date.now(), log = (m) => console.log(`SELFTEST +${((Date.now() - t0) / 1000).toFixed(1)}s ${m}`);
+  new MutationObserver(() => log(`status: ${statusEl.textContent}`)).observe(statusEl, { childList: true, characterData: true, subtree: true });
+  startCall().then(() => {
+    const est = setInterval(() => {
+      if (!session || session.state !== SessionState.Established) return;
+      clearInterval(est);
+      const pc = session.sessionDescriptionHandler.peerConnection;
+      log(`established; ice=${pc.iceConnectionState}`);
+      setTimeout(() => log(`dtmf ${q.get("dtmf") || "2"} sent=${sendDigit(q.get("dtmf") || "2")}`), 1000 * (+q.get("dtmfAt") || 8));
+      setTimeout(async () => {
+        const st = await pc.getStats();
+        st.forEach((r) => {
+          if (r.type === "inbound-rtp" && r.kind === "audio") log(`rx packets=${r.packetsReceived} lost=${r.packetsLost} jitter=${r.jitter}`);
+          if (r.type === "outbound-rtp" && r.kind === "audio") log(`tx packets=${r.packetsSent}`);
+        });
+        hangUp(); log("hangup");
+      }, 1000 * (+q.get("hangupAt") || 25));
+    }, 200);
+  });
+}

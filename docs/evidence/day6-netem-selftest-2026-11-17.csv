@@ -1,0 +1,6 @@
+profile,netem,browser_rx,browser_lost,browser_jitter_s,browser_tx,category_routed,uniqueid,asterisk_rtcp
+baseline,"",818,0,0.001,959,medical,1794927515.6,"ssrc=488888176;themssrc=5041068;lp=0;rxjitter=0.000500;rxcount=961;txjitter=0.003250;txcount=818;rlp=0;rtt=0.000396;rxmes=88.084404;txmes=88.078442"
+lan-good,"delay 20ms 5ms",817,0,0.003,949,medical,1794927586.7,"ssrc=1132226271;themssrc=94490547;lp=0;rxjitter=0.003500;rxcount=949;txjitter=0.004000;txcount=819;rlp=0;rtt=0.041931;rxmes=87.855627;txmes=87.848223"
+congested,"delay 100ms 30ms distribution normal loss 1%",745,9,0.028,935,medical,1794927664.8,"ssrc=890941093;themssrc=2311042409;lp=4;rxjitter=0.020500;rxcount=931;txjitter=0.023375;txcount=763;rlp=7;rtt=0.176055;rxmes=84.016993;txmes=84.335338"
+poor,"delay 150ms 40ms distribution normal loss 5%",741,47,0.025,927,medical,1794927732.9,"ssrc=372849456;themssrc=2228568580;lp=33;rxjitter=0.030500;rxcount=880;txjitter=0.024250;txcount=803;rlp=39;rtt=0.287353;rxmes=66.943727;txmes=55.381794"
+bad,"delay 300ms 60ms distribution normal loss 10%",664,62,0.048,902,medical,1794927916.10,"ssrc=627384880;themssrc=3908361257;lp=81;rxjitter=0.037875;rxcount=791;txjitter=0.034125;txcount=758;rlp=40;rtt=0.538589;rxmes=33.020315;txmes=20.000000"

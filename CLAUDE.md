@@ -47,7 +47,7 @@ Context `[lab]`:
 Context `[web]` (browser callers): `8000` → FILTER(X-Location) → append `time,UNIQUEID,callerid,lat/lon/acc`
 to `/var/log/asterisk/locations.csv` → `Goto(hotline-ivr,s,1)`. Anything else → pbx-invalid.
 
-Context `[hotline-ivr]`: consent prompt-101 → menu prompt-102 →
+Context `[hotline-ivr]`: s,1 pushes hangup handler `[qos-log]` (RTCP stats → `/var/log/asterisk/qos.csv`) → consent prompt-101 → menu prompt-102 →
 `1`=fire, `2`=medical, `3`=peace, `i`=invalid (repeat), `t`=timeout (repeat once, then general).
 `route`: Set CDR(userfield)=${CAT} → MixMonitor(${CAT}-…wav,b) → prompt-103 → Queue(q-${CAT},t,,,60) → prompt-104 → VoiceMail(1002@default).
 
@@ -67,9 +67,10 @@ Custom prompts: 101 consent, 102 menu, 103 connecting, 104 leave a message (reco
 - [x] Day 2 — 1001 ↔ 1002 calls over hotspot
 - [x] Day 3 — hotline queue, consent prompt, recording (MixMonitor), voicemail, *97, CDR
 - [ ] Day 4 — IVR with category queues: config loaded, **prompt-102 not recorded yet**, live test pending
-- [~] Day 5 — HTTPS (mkcert) + WSS + SIP.js "Call Barangay" page with GPS: **server side done & verified**
-  (HTTPS 200s, WSS 101 upgrade, endpoint 1004 webrtc). Pending: browser/phone call test, trust CA on devices.
-- [ ] Day 6 — call-quality tests: `tc netem` profiles + tcpdump/Wireshark, QOS log via `${CHANNEL(rtcp,all)}`
+- [~] Day 5 — "Call Barangay" page: **verified end-to-end with headless Firefox** (audio both ways, DTMF 1/2/3 routing,
+  GPS → locations.csv joined by UNIQUEID, rtp_timeout cleanup). Pending: real iPhone Safari test (trust CA first).
+- [~] Day 6 — qos-log + `scripts/day6-selftest.sh` (5 netem profiles) **done on lo** → `docs/test-log.md`.
+  Pending: same profiles with phones over hotspot (`scripts/day6-selftest.sh enp0s1` shapes VM→phone only).
 - [ ] Day 7 — evidence pack + 5-minute demo
 Later/simulated only: MySQL realtime, dispatcher dashboard, 911 escalation (fake extension), TLS for Linphone.
 
@@ -81,6 +82,18 @@ Later/simulated only: MySQL realtime, dispatcher dashboard, 911 escalation (fake
   New network IP → re-run mkcert with that IP and restart. Devices must trust `keys/ca/rootCA.pem`
   (iPhone: AirDrop → install profile → Settings › General › About › Certificate Trust Settings → enable).
 - Asterisk serves `.crt` as `text/crt`, so iOS won't install the CA from the page — use AirDrop/Files.
+
+## Live monitor (testing screen)
+- `https://<VM-IP>:8089/static/barangay/monitor.html` — phones, live calls (step, category, GPS, rx/tx/loss/jitter),
+  queues, recent calls (CDR + GPS), queue events, warnings. Refreshes every 2 s.
+- Collector: `hotline-monitor.service` runs `/usr/local/sbin/hotline-monitor.py` (stdlib only, `asterisk -rx` + log tails)
+  → writes `status.json` in the static web root. Install/refresh: `sudo scripts/install-monitor.sh`.
+- Shows caller numbers + GPS to anyone on the LAN: fine for the lab, would need a login in a real deployment.
+
+## Self-testing without phones
+- Firefox test profile `~/labtest/ff` (lab CA trusted, fake mic/GPS, mDNS obfuscation off, console → stdout).
+- One call: `firefox --headless --no-remote --profile ~/labtest/ff "https://<IP>:8089/static/barangay/index.html?auto=1&dtmf=2&dtmfAt=8&hangupAt=20"`
+- Test rows have caller ID 1004.
 
 ## Repos
 - `/etc/asterisk` — local git (live config, history of every change). Not pushed.
@@ -118,6 +131,10 @@ sudo ls -R /var/spool/asterisk/voicemail/default/
 - iOS sleeps Linphone → open the app before tests; members show `Unavailable` otherwise.
 - `Couldn't negotiate stream 0:audio … (nothing)` on re-INVITE (15× in logs, mostly 1001): check Linphone has PCMU/PCMA enabled and Media encryption = None; capture with `pjsip set logger on` on next test.
 - `No registered publish handler for event presence`: Linphone presence publishing; harmless.
+- WebRTC no audio / Asterisk answers `a=recvonly`: browser sent mDNS `.local` candidates + `c=0.0.0.0` (seen with
+  Firefox fake media). Real phones normally send real IPs after mic permission; if not, this is the cause.
+- SIP.js default WSS `connectionTimeout` 5 s fails on bad links → set to 15 s in app.js.
+- `FILE(...,al)` won't create a file: `locations.csv` / `qos.csv` must exist (created with header rows).
 - Desktop install once caused two DHCP IPs; fixed by netplan renderer=NetworkManager + cloud-init network disabled.
 - Opus on ARM64: `codec_opus` availability unconfirmed — check `core show codecs` before relying on it.
 
